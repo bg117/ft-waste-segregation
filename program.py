@@ -1,0 +1,2 @@
+def main(txt):
+    pass
