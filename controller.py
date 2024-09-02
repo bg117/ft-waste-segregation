@@ -1,5 +1,8 @@
 import ftrobopy
 
+def pwm(status):
+    return 512 if status else 0
+
 # setup the TXT controller 4.0
 # unless indicated otherwise, all inputs and outputs are connected to the master controller (txt1)
 
@@ -21,12 +24,12 @@ class Solenoid:
         self._output = slave.output(index)
 
     def open(self):
-        self._input.setLevel(512) # pwm full power
-        self._output.setLevel(0)
+        self._input.setLevel(pwm(True)) # pwm full power
+        self._output.setLevel(pwm(False))
 
     def close(self):
-        self._input.setLevel(0) # pwm full power
-        self._output.setLevel(512)
+        self._input.setLevel(pwm(False))
+        self._output.setLevel(pwm(True))
 
 # slave controller
 class SolenoidArray:
