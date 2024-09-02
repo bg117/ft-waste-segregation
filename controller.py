@@ -33,6 +33,10 @@ class TXTController:
         self.txt1 = ftrobopy.ftrobopy(host='auto')
         self.txt2 = ftrobopy.ftrobopy(host='auto', use_extension=True) # slave controller
 
+        # print out firmware versions
+        print("TXT (master) firmware version: ", self.txt1.getFirmwareVersion())
+        print("TXT (slave) firmware version: ", self.txt2.getFirmwareVersion())
+
         self.ultrasonic = UltrasonicArray(self.txt1)
         self.solenoid_input_valves = SolenoidInputValveArray(self.txt1)
         self.solenoid_output_valves = SolenoidOutputValveArray(self.txt2)
