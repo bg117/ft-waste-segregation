@@ -1,2 +1,2 @@
 def main(txt):
-    pass
+    print("Hello, world!")

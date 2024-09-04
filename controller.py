@@ -53,3 +53,16 @@ class TXTController:
 
         self.weight_sensor = self.txt1.input(5) # I5
         self.compressor = self.txt1.output(4) # O4
+
+    def start(self):
+        self.txt1.startOnline()
+        self.txt2.startOnline()
+
+    def stop(self):
+        self.txt1.stopOnline()
+        self.txt2.stopOnline()
+
+    def run(self, process):
+        self.start()
+        process(self)
+        self.stop()
