@@ -9,6 +9,7 @@ def pwm(status):
 BIO = 0
 NP = 1
 REC = 2
+PLASTIC = 3
 
 # setup the TXT controller 4.0
 # unless indicated otherwise, all inputs and outputs are connected to the master controller (txt1)
@@ -19,10 +20,11 @@ class UltrasonicArray:
         self._array = [None, None, None]
 
         self.front = txt.ultrasonic(1)  # I1
-        self[BIO] = txt.ultrasonic(2)  # I2
-        self[NP] = txt.ultrasonic(3)  # I3
-        self[REC] = txt.ultrasonic(4)  # I4
-        self.object_confirm = txt.ultrasonic(6)  # I6
+        self.object_confirm = txt.ultrasonic(2)  # I2
+        self[BIO] = txt.ultrasonic(3)  # I3
+        self[NP] = txt.ultrasonic(4)  # I4
+        self[REC] = txt.ultrasonic(5)  # I5
+        self[PLASTIC] = txt.ultrasonic(6) # I6
 
     def __getitem__(self, key):
         return self._array[key]
@@ -85,7 +87,7 @@ class TXTController:
 
         self.camera = Camera(self._txt1)
 
-        self.weight_sensor = self._txt1.input(5)  # I5
+        self.weight_sensor = self._txt1.input(7)  # I7
         self.compressor = self._txt1.output(4)  # O4
 
     def start(self):
