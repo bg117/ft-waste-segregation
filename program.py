@@ -1,6 +1,6 @@
 import time
 import controller
-from controller import BIO, NP, REC, pwm
+from controller import BIO, NP, REC, PLASTIC, pwm
 
 US_THRESHOLD = 15
 
@@ -26,6 +26,17 @@ def segregate_waste(array):
         type = array.pop()
         # run the main motor and wait until the corresponding ultrasonic sensor detects the object
         txt.encoder.main.setSpeed(512)
+
+        if type == PLASTIC:
+            # wait until the plastic ultrasonic sensor detects the object
+            while txt.ultrasonic[PLASTIC].distance() > US_THRESHOLD:
+                pass
+
+            # wait one second to let the object fall into the bin
+            time.sleep(1)
+        
+            # next loop
+            continue
 
         while txt.ultrasonic[type].distance() > US_THRESHOLD:
             pass
