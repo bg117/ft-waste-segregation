@@ -13,6 +13,7 @@ class UltrasonicArray:
         self.bio = txt.ultrasonic(2) # I2
         self.np = txt.ultrasonic(3) # I3
         self.rec = txt.ultrasonic(4) # I4
+        self.object_confirm = txt.ultrasonic(6) # I6
 
 class EncoderArray:
     def __init__(self, txt: ftrobopy.ftrobopy):
