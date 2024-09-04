@@ -40,6 +40,19 @@ class SolenoidArray:
         self.nc = Solenoid(master, slave, 2)
         self.rec = Solenoid(master, slave, 3)
 
+class Camera:
+    def __init__(self, txt: ftrobopy.ftrobopy):
+        self._txt = txt
+
+    def start(self):
+        return self._txt.startCameraOnline(640, 480)
+
+    def stop(self):
+        return self._txt.stopCameraOnline()
+    
+    def frame(self):
+        return self._txt.getCameraFrame()
+
 class TXTController:
     def __init__(self):
         self._txt1 = ftrobopy.ftrobopy(host='auto')
@@ -52,6 +65,8 @@ class TXTController:
         self.ultrasonic = UltrasonicArray(self._txt1)
         self.solenoid = SolenoidArray(self._txt1, self._txt2)
         self.encoder = EncoderArray(self._txt1)
+
+        self.camera = Camera(self._txt1)
 
         self.weight_sensor = self._txt1.input(5) # I5
         self.compressor = self._txt1.output(4) # O4
