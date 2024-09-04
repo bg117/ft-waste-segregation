@@ -1,5 +1,16 @@
 import controller
 
+def loop(txt: controller.TXTController):
+    # wait until the weight sensor is triggered
+    while txt.weight_sensor.state() == 0:
+        pass
+
+# --- essentials ---
+
+def main(txt: controller.TXTController):
+    while True:
+        loop(txt)
+
 def test_controls(txt: controller.TXTController):
     txt.solenoid.bio.open()
     txt.solenoid.nc.open()
@@ -17,6 +28,3 @@ def test_controls(txt: controller.TXTController):
     u4 = txt.ultrasonic.rec.distance() # read rec ultrasonic sensor
 
     print(f'PB Trigger: {w}, Front: {u1} cm, Bio: {u2} cm, NP: {u3} cm, Rec: {u4} cm')
-
-def main(txt: controller.TXTController):
-    pass
