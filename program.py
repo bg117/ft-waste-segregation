@@ -4,7 +4,9 @@ from controller import BIO, NP, REC, pwm
 
 US_THRESHOLD = 15
 
-def loop(txt: controller.TXTController):
+txt: controller.TXTController
+
+def loop():
     # wait until the weight sensor is triggered
     while txt.weight_sensor.state() == 0:
         pass
@@ -14,9 +16,12 @@ def loop(txt: controller.TXTController):
         return
     
     # run the preface and main motors
-    move_waste(txt)
+    move_waste()
 
-    array = detect_waste(txt)
+    array = detect_waste()
+    segregate_waste(array)
+
+def segregate_waste(array):
     while len(array) > 0:
         type = array.pop()
         # run the main motor and wait until the corresponding ultrasonic sensor detects the object
@@ -37,7 +42,7 @@ def loop(txt: controller.TXTController):
         txt.compressor.setLevel(pwm(False))
         txt.solenoid[type].close()
 
-def move_waste(txt: controller.TXTController):
+def move_waste():
     txt.encoder.preface.setSpeed(512)
     txt.encoder.main.setSpeed(512)
 
@@ -49,32 +54,34 @@ def move_waste(txt: controller.TXTController):
     txt.encoder.preface.setSpeed(0)
     txt.encoder.main.setSpeed(0)
 
-def detect_waste(txt: controller.TXTController):
+def detect_waste():
     # array of bio, np, and rec types detected in the frame (from right to left)
     return []
 
 # --- essentials ---
 
-def main(txt: controller.TXTController):
+def main(ct: controller.TXTController):
+    txt = ct
+
     txt.camera.start()
 
     while True:
-        loop(txt)
+        loop()
 
-def test_controls(txt: controller.TXTController):
-    txt.solenoid[BIO].open()
-    txt.solenoid[NP].open()
-    txt.solenoid[REC].open()
+def test_controls(ct: controller.TXTController):
+    ct.solenoid[BIO].open()
+    ct.solenoid[NP].open()
+    ct.solenoid[REC].open()
 
-    txt.compressor.setLevel(512) # turn on compressor
+    ct.compressor.setLevel(512) # turn on compressor
     
-    txt.encoder.preface.setSpeed(512) # start preface motor
-    txt.encoder.main.setSpeed(512) # start main motor
+    ct.encoder.preface.setSpeed(512) # start preface motor
+    ct.encoder.main.setSpeed(512) # start main motor
 
-    w = txt.weight_sensor.state() # read weight sensor
-    u1 = txt.ultrasonic.front.distance() # read front ultrasonic sensor
-    u2 = txt.ultrasonic[BIO].distance() # read bio ultrasonic sensor
-    u3 = txt.ultrasonic[NP].distance() # read np ultrasonic sensor
-    u4 = txt.ultrasonic[REC].distance() # read rec ultrasonic sensor
+    w = ct.weight_sensor.state() # read weight sensor
+    u1 = ct.ultrasonic.front.distance() # read front ultrasonic sensor
+    u2 = ct.ultrasonic[BIO].distance() # read bio ultrasonic sensor
+    u3 = ct.ultrasonic[NP].distance() # read np ultrasonic sensor
+    u4 = ct.ultrasonic[REC].distance() # read rec ultrasonic sensor
 
     print(f'PB Trigger: {w}, Front: {u1} cm, Bio: {u2} cm, NP: {u3} cm, Rec: {u4} cm')
