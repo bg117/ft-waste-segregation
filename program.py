@@ -1,11 +1,8 @@
+import time
 import controller
 from controller import pwm
 
 US_THRESHOLD = 15
-
-BIO = 1
-NP = 2
-REC = 3
 
 def detect_waste(txt: controller.TXTController):
     # array of bio, np, and rec types detected in the frame (from right to left)
@@ -38,17 +35,20 @@ def loop(txt: controller.TXTController):
         # run the main motor and wait until the corresponding ultrasonic sensor detects the object
         txt.encoder.main.setSpeed(512)
 
-        if type == BIO:
-            while txt.ultrasonic.bio.distance() > US_THRESHOLD:
-                pass
-            # stop the main motor and push the bio waste
-            txt.encoder.main.setSpeed(0)
-            txt.solenoid.bio.open()
-            txt.compressor.setLevel(pwm(True))
-        elif type == NP:
+        while txt.ultrasonic[type].distance() > US_THRESHOLD:
             pass
-        elif type == REC:
-            pass
+
+        # stop the main motor and push the bio waste
+        txt.encoder.main.setSpeed(0)
+
+        txt.solenoid[type].open()
+        txt.compressor.setLevel(pwm(True))
+        # wait 1 second
+        time.sleep(1)
+
+        # close the solenoid and turn off the compressor
+        txt.compressor.setLevel(pwm(False))
+        txt.solenoid[type].close()
 
 # --- essentials ---
 
