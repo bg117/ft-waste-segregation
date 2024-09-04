@@ -1,3 +1,4 @@
+from typing import Callable
 import ftrobopy
 
 def pwm(status):
@@ -7,20 +8,20 @@ def pwm(status):
 # unless indicated otherwise, all inputs and outputs are connected to the master controller (txt1)
 
 class UltrasonicArray:
-    def __init__(self, txt):
+    def __init__(self, txt: ftrobopy.ftrobopy):
         self.front = txt.ultrasonic(1) # I1
         self.bio = txt.ultrasonic(2) # I2
         self.np = txt.ultrasonic(3) # I3
         self.rec = txt.ultrasonic(4) # I4
 
 class EncoderArray:
-    def __init__(self, txt):
+    def __init__(self, txt: ftrobopy.ftrobopy):
         self.preface = txt.motor(1) # M1, preface motor
         self.main = txt.motor(2) # M2, main motor
 
 class Solenoid:
-    def __init__(self, master, slave, index):
-        self._input = master.input(index) # I1, I2, I3
+    def __init__(self, master: ftrobopy.ftrobopy, slave: ftrobopy.ftrobopy, index):
+        self._input = master.output(index) # O1, O2, O3
         self._output = slave.output(index)
 
     def open(self):
@@ -33,7 +34,7 @@ class Solenoid:
 
 # slave controller
 class SolenoidArray:
-    def __init__(self, master, slave):
+    def __init__(self, master: ftrobopy.ftrobopy, slave: ftrobopy.ftrobopy):
         self.bio = Solenoid(master, slave, 1)
         self.nc = Solenoid(master, slave, 2)
         self.rec = Solenoid(master, slave, 3)
@@ -62,7 +63,7 @@ class TXTController:
         self._txt1.stopOnline()
         self._txt2.stopOnline()
 
-    def run(self, process):
+    def run(self, process: Callable):
         self.start()
         process(self)
         self.stop()
