@@ -26,6 +26,8 @@ def loop(txt: controller.TXTController):
 # --- essentials ---
 
 def main(txt: controller.TXTController):
+    txt.camera.start()
+
     while True:
         loop(txt)
 
