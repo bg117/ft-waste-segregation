@@ -1,9 +1,27 @@
 import controller
 
+US_THRESHOLD = 15
+
 def loop(txt: controller.TXTController):
     # wait until the weight sensor is triggered
     while txt.weight_sensor.state() == 0:
         pass
+
+    # check if there is really an object or if it was a false positive
+    if txt.ultrasonic.front.distance() > 20:
+        return
+    
+    # run the preface and main motors
+    txt.encoder.preface.setSpeed(512)
+    txt.encoder.main.setSpeed(512)
+
+    # wait until less than US_THRESHOLD
+    while txt.ultrasonic.object_confirm.distance() > US_THRESHOLD:
+        pass
+
+    # stop the preface and main motors
+    txt.encoder.preface.setSpeed(0)
+    txt.encoder.main.setSpeed(0)
 
 # --- essentials ---
 
