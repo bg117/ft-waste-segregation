@@ -40,27 +40,27 @@ class SolenoidArray:
 
 class TXTController:
     def __init__(self):
-        self.txt1 = ftrobopy.ftrobopy(host='auto')
-        self.txt2 = ftrobopy.ftrobopy(host='auto', use_extension=True) # slave controller
+        self._txt1 = ftrobopy.ftrobopy(host='auto')
+        self._txt2 = ftrobopy.ftrobopy(host='auto', use_extension=True) # slave controller
 
         # print out firmware versions
-        print("TXT (master) firmware version: ", self.txt1.getFirmwareVersion())
-        print("TXT (slave) firmware version: ", self.txt2.getFirmwareVersion())
+        print("TXT (master) firmware version: ", self._txt1.getFirmwareVersion())
+        print("TXT (slave) firmware version: ", self._txt2.getFirmwareVersion())
 
-        self.ultrasonic = UltrasonicArray(self.txt1)
-        self.solenoid = SolenoidArray(self.txt1, self.txt2)
-        self.encoder = EncoderArray(self.txt1)
+        self.ultrasonic = UltrasonicArray(self._txt1)
+        self.solenoid = SolenoidArray(self._txt1, self._txt2)
+        self.encoder = EncoderArray(self._txt1)
 
-        self.weight_sensor = self.txt1.input(5) # I5
-        self.compressor = self.txt1.output(4) # O4
+        self.weight_sensor = self._txt1.input(5) # I5
+        self.compressor = self._txt1.output(4) # O4
 
     def start(self):
-        self.txt1.startOnline()
-        self.txt2.startOnline()
+        self._txt1.startOnline()
+        self._txt2.startOnline()
 
     def stop(self):
-        self.txt1.stopOnline()
-        self.txt2.stopOnline()
+        self._txt1.stopOnline()
+        self._txt2.stopOnline()
 
     def run(self, process):
         self.start()
