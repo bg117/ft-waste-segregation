@@ -1,10 +1,12 @@
 import time
 import controller
 from controller import BIO, NP, REC, PLASTIC, pwm
+import ml
 
 US_THRESHOLD = 15
 
 txt: controller.TXTController
+od: ml.ML
 
 def loop():
     # wait until the weight sensor is triggered
@@ -71,8 +73,9 @@ def detect_waste():
 
 # --- essentials ---
 
-def main(ct: controller.TXTController):
+def main(ct: controller.TXTController, ml: ml.ML):
     txt = ct
+    od = ml
 
     txt.camera.start()
 

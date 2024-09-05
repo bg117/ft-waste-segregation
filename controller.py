@@ -1,5 +1,6 @@
 from typing import Callable
 import ftrobopy
+import ml
 
 
 def pwm(status):
@@ -24,7 +25,7 @@ class UltrasonicArray:
         self[BIO] = txt.ultrasonic(3)  # I3
         self[NP] = txt.ultrasonic(4)  # I4
         self[REC] = txt.ultrasonic(5)  # I5
-        self[PLASTIC] = txt.ultrasonic(6) # I6
+        self[PLASTIC] = txt.ultrasonic(6)  # I6
 
     def __getitem__(self, key):
         return self._dict[key]
@@ -51,6 +52,7 @@ class Solenoid:
     def close(self):
         self._input.setLevel(pwm(False))
         self._output.setLevel(pwm(True))
+
 
 class Camera:
     def __init__(self, txt: ftrobopy.ftrobopy):
@@ -98,7 +100,7 @@ class TXTController:
         self._txt1.stopOnline()
         self._txt2.stopOnline()
 
-    def run(self, process: Callable):
+    def run(self, process: Callable, ml: ml.ML):
         self.start()
-        process(self)
+        process(self, ml)
         self.stop()
