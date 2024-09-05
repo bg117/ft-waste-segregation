@@ -3,6 +3,7 @@ import tensorflow as tf
 from io import BytesIO
 from PIL import Image
 
+
 # Define image preprocessing function
 def preprocess_image(frame, input_size):
     img_bytes = BytesIO(frame)
@@ -12,6 +13,7 @@ def preprocess_image(frame, input_size):
     image = (image / 255.0).astype(np.float32)  # Normalize to [0,1]
     image = np.expand_dims(image, axis=0)  # Add batch dimension
     return image
+
 
 class ML:
     def __init__(self):
@@ -28,20 +30,18 @@ class ML:
         img_bytes = BytesIO(frame)
 
         # Preprocess image
-        input_size = self._inp_details[0]['shape'][1:3]  # (height, width)
+        input_size = self._inp_details[0]["shape"][1:3]  # (height, width)
         image = preprocess_image(img_bytes, input_size)
-        
+
         # Set input tensor
-        self._ip.set_tensor(self._inp_details[0]['index'], image)
-        
+        self._ip.set_tensor(self._inp_details[0]["index"], image)
+
         # Run inference
         self._ip.invoke()
-        
+
         # Get output tensor
-        boxes = self._ip.get_tensor(self._outp_details[0]['index'])[0]  # Bounding boxes
-        classes = self._ip.get_tensor(self._outp_details[1]['index'])[0]  # Class labels
-        scores = self._ip.get_tensor(self._outp_details[2]['index'])[0]  # Confidence scores
-        
+        boxes = self._ip.get_tensor(self._outp_details[0]["index"])[0]   # Bounding boxes
+        classes = self._ip.get_tensor(self._outp_details[1]["index"])[0] # Class labels
+        scores = self._ip.get_tensor(self._outp_details[2]["index"])[0]  # Confidence scores
+
         return boxes, classes, scores
-
-
