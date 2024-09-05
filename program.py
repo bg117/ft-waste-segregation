@@ -80,6 +80,8 @@ def detect_waste():
 
 
 def main(ct: controller.TXTController, ml: ml.ML):
+    global txt, od
+
     txt = ct
     od = ml
 
