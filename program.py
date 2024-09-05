@@ -72,8 +72,31 @@ def move_waste():
 
 
 def detect_waste():
+    # get camera frame
+    frame = txt.camera.frame()
+    boxes, classes, _ = od.run_inference_for_single_image(frame)
+
+    # sort classes by boxes[i][3] (right to left)
+    # for each class, group each number into either BIO, NP, REC, or PLASTIC
+    classes_sorted = [
+        c[1] for c in sorted(zip(boxes, classes), key=lambda x: x[0][3], reverse=True)
+    ]
+    classes_selected = [group_class(c) for c in classes_sorted]
+
     # array of bio, np, and rec types detected in the frame (from right to left)
-    return []
+    return classes_selected
+
+
+def group_class(c: int):
+    # if c is in 0, BIO; 1-5 NP; 6-10 REC; 11-15 PLASTIC
+    if c == 0:
+        return BIO
+    if c in range(1, 6):
+        return NP
+    if c in range(6, 11):
+        return REC
+    if c in range(11, 16):
+        return PLASTIC
 
 
 # --- essentials ---
