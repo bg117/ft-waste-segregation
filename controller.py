@@ -17,7 +17,7 @@ PLASTIC = 3
 
 class UltrasonicArray:
     def __init__(self, txt: ftrobopy.ftrobopy):
-        self._array = [None, None, None]
+        self._dict = {}
 
         self.front = txt.ultrasonic(1)  # I1
         self.object_confirm = txt.ultrasonic(2)  # I2
@@ -27,10 +27,10 @@ class UltrasonicArray:
         self[PLASTIC] = txt.ultrasonic(6) # I6
 
     def __getitem__(self, key):
-        return self._array[key]
+        return self._dict[key]
 
     def __setitem__(self, key, value):
-        self._array[key] = value
+        self._dict[key] = value
 
 
 class EncoderArray:
