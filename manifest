@@ -1,0 +1,9 @@
+[app]
+name: FTWasteSegregation
+icon: icon.png
+desc: JHS Innovative A - SRSTHS
+exec: main.py
+managed: yes
+uuid: dc62eb01-6239-4e3d-a55a-dbbc8f1aa4e6
+version: 1.0
+firmware: 0.9
