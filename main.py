@@ -2,10 +2,8 @@ import threading
 import time
 import sys
 from lib.controller import Controller
-from fischertechnik.machine_learning.ObjectDetector import ObjectDetector
+from lib.object_detector import ObjectDetector
 from fischertechnik.controller.Motor import Motor
-from fischertechnik.controller.PhotoTransistor import PhotoTransistor
-from fischertechnik.controller.MagneticValve import MagneticValve
 import lib.labels as labels
 
 txt = None  # type: Controller
