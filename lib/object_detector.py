@@ -1,4 +1,4 @@
-from fischertechnik.machine_learning import Detector
+from fischertechnik.machine_learning.Detector import Detector
 
 import cv2
 import numpy as np
@@ -53,4 +53,4 @@ class ObjectDetector(Detector):
                     }
                 )
 
-        return sorted(result, key=lambda i: i["probability"], reverse=True)
+        return sorted(result, key=lambda i: i["position"][2], reverse=True)

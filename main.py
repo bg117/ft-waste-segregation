@@ -1,6 +1,8 @@
 import threading
+import traceback
 import time
 import sys
+import argparse
 from lib.controller import Controller
 from lib.object_detector import ObjectDetector
 from fischertechnik.controller.Motor import Motor
@@ -10,20 +12,24 @@ txt = None  # type: Controller
 model = None  # type: ObjectDetector
 
 
+def prelude():
+    """Prelude of the program."""
+    print("prelude")
+
+    global txt, model
+    txt = Controller()
+    model = ObjectDetector("train/model.tflite", "train/labels.txt")
+
+
 def setup():
     """Setup the robot before the main loop."""
     print("setup")
-
-    global txt, model
-
-    txt = Controller()
+    
     # turn on LEDs for the phototransistors
     txt.ext.bio_led.set_brightness(512)
     txt.ext.np_led.set_brightness(512)
     txt.ext.rec_led.set_brightness(512)
     txt.ext.plastic_led.set_brightness(512)
-
-    model = ObjectDetector("train/model.tflite", "train/labels.txt")
 
 
 def loop():
@@ -38,7 +44,7 @@ def loop():
         return
 
     move_waste()
-    waste = classify_waste()
+    waste = model.process_image(txt.main.camera.get_frame())
 
     # for each index, start a new thread to wait for the waste to pass by the phototransistor
     segregate_waste(waste)
@@ -53,15 +59,6 @@ def move_waste():
     while txt.main.front_ultrasonic.get_distance() < 20:
         pass
     txt.main.front_motor.stop_sync(txt.main.back_motor)
-
-
-def classify_waste():
-    """Classify the waste and sort it from right to left."""
-    detected = model.process_image(txt.main.camera.get_frame())
-    # sort based on rightmost object
-    sorted_detected = sorted(detected, key=lambda x: x["position"][2], reverse=True)
-
-    return sorted_detected
 
 
 def segregate_waste(waste):
@@ -146,11 +143,33 @@ def test_outputs():
     print("Done.")
 
     while True:
-        time.sleep(0.1)
+        pass
 
-if sys.argv[1] == '-d':
-    test_outputs()
-else:
-    setup()
+
+def test_model():
+    # test the model on the camera feed
+    print("Testing model...")
     while True:
-        loop()
+        detected = model.process_image(txt.main.camera.get_frame())
+        print(detected)
+        time.sleep(0.5)
+
+try:
+    prelude()
+
+    # parse arguments (-i/--debug-input, -m/--debug-model)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--debug-input", action="store_true")
+    parser.add_argument("-m", "--debug-model", action="store_true")
+    args = parser.parse_args()
+
+    if args.debug_input:
+        test_outputs()
+    elif args.debug_model:
+        test_model()
+    else:
+        setup()
+        while True:
+            loop()
+except Exception:
+    print(traceback.format_exc())
