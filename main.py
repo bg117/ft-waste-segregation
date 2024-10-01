@@ -1,7 +1,6 @@
 import threading
 import traceback
 import time
-import sys
 import argparse
 from lib.controller import Controller
 from lib.object_detector import ObjectDetector
@@ -24,19 +23,18 @@ def prelude():
 def setup():
     """Setup the robot before the main loop."""
     print("setup")
-    
+
     # turn on LEDs for the phototransistors
     txt.ext.bio_led.set_brightness(512)
     txt.ext.np_led.set_brightness(512)
     txt.ext.rec_led.set_brightness(512)
-    txt.ext.plastic_led.set_brightness(512)
 
 
 def loop():
     """Main loop of the program."""
     print("loop")
     # wait until weight sensor is pressed
-    while not txt.main.weight_sensor.is_closed():
+    while not txt.main.push_button.is_closed():
         pass
 
     # check if there's really an object in front of the robot
@@ -53,12 +51,12 @@ def loop():
 def move_waste():
     """Move the waste to the sorting area."""
     # move forward until the object is out of range
-    txt.main.front_motor.set_speed(256, Motor.CCW)
-    txt.main.back_motor.set_speed(256, Motor.CCW)
-    txt.main.front_motor.start_sync(txt.main.back_motor)
+    txt.ext.front_motor.set_speed(256, Motor.CCW)
+    txt.ext.back_motor.set_speed(256, Motor.CCW)
+    txt.ext.front_motor.start_sync(txt.ext.back_motor)
     while txt.main.front_ultrasonic.get_distance() < 20:
         pass
-    txt.main.front_motor.stop_sync(txt.main.back_motor)
+    txt.ext.front_motor.stop_sync(txt.ext.back_motor)
 
 
 def segregate_waste(waste):
@@ -72,9 +70,7 @@ def segregate_waste(waste):
             threading.Thread(target=wait_for_rec, args=(i,)).start()
         else:  # plastic
             # wait for the waste to fall into the bin
-            threading.Thread(
-                target=count_pt_passes, args=(txt.ext.plastic_pt, i)
-            ).start()
+            threading.Thread(target=wait_for_plastic, args=(i,)).start()
 
 
 def wait_for_bio(count):
@@ -95,6 +91,12 @@ def wait_for_rec(count):
     use_piston(txt.main.rec_input_valve, txt.ext.rec_output_valve)
 
 
+def wait_for_plastic(count):
+    """Wait for the plastic waste to pass by the recyclable phototransistor."""
+    count_pt_passes(txt.ext.rec_pt, count)
+    time.sleep(2)
+
+
 def count_pt_passes(pt, count):
     """Count the number of times the phototransistor goes from dark to bright, i.e. an object passes by."""
     i = 0
@@ -108,7 +110,7 @@ def count_pt_passes(pt, count):
 
 def use_piston(open_valve, close_valve):
     """Use the piston to sort the waste."""
-    txt.main.back_motor.stop_sync()
+    txt.ext.back_motor.stop_sync()
     txt.main.compressor.on()
     open_valve.on()
     time.sleep(0.3)
@@ -123,9 +125,9 @@ def test_outputs():
     txt = Controller()
 
     print("Testing outputs...")
-    txt.main.front_motor.set_speed(512)
-    txt.main.back_motor.set_speed(512)
-    txt.main.front_motor.start_sync(txt.main.back_motor)
+    txt.ext.front_motor.set_speed(512)
+    txt.ext.back_motor.set_speed(512)
+    txt.ext.front_motor.start_sync(txt.ext.back_motor)
 
     txt.main.bio_input_valve.on()
     txt.main.np_input_valve.on()
@@ -137,9 +139,9 @@ def test_outputs():
     txt.ext.np_led.set_brightness(512)
     txt.ext.rec_led.set_brightness(512)
 
-    txt.ext.bio_output_valve.on()
-    txt.ext.np_output_valve.on()
-    txt.ext.rec_output_valve.on()
+    txt.main.bio_output_valve.on()
+    txt.main.np_output_valve.on()
+    txt.main.rec_output_valve.on()
     print("Done.")
 
     while True:
@@ -153,6 +155,7 @@ def test_model():
         detected = model.process_image(txt.main.camera.get_frame())
         print(detected)
         time.sleep(0.5)
+
 
 try:
     prelude()
