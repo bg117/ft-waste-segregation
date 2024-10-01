@@ -12,7 +12,7 @@ class MainController:
     def __init__(self):
         self._txt = txt_factory.controller_factory.create_graphical_controller()
 
-        self.push_button = txt_factory.input_factory.create_push_button(self._txt, 1)
+        self.push_button = txt_factory.input_factory.create_mini_switch(self._txt, 1)
         self.front_ultrasonic = (
             txt_factory.input_factory.create_ultrasonic_distance_meter(self._txt, 2)
         )
