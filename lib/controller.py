@@ -57,12 +57,12 @@ class ExtController:
     def __init__(self):
         self._txt = txt_factory.controller_factory.create_graphical_controller(2)
 
-        self.bio_led = txt_factory.output_factory.create_led(self._txt, 1)
-        self.np_led = txt_factory.output_factory.create_led(self._txt, 2)
-        self.rec_led = txt_factory.output_factory.create_led(self._txt, 3)
-
         self.front_motor = txt_factory.motor_factory.create_encodermotor(self._txt, 1)
         self.back_motor = txt_factory.motor_factory.create_encodermotor(self._txt, 2)
+        
+        self.bio_led = txt_factory.output_factory.create_led(self._txt, 5)
+        self.np_led = txt_factory.output_factory.create_led(self._txt, 6)
+        self.rec_led = txt_factory.output_factory.create_led(self._txt, 7)
 
 
 class Controller:

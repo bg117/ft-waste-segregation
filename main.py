@@ -122,8 +122,6 @@ def use_piston(open_valve, close_valve):
 
 
 def test_outputs():
-    txt = Controller()
-
     print("Testing outputs...")
     txt.ext.front_motor.set_speed(512)
     txt.ext.back_motor.set_speed(512)
