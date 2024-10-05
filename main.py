@@ -75,25 +75,25 @@ def segregate_waste(waste):
 
 def wait_for_bio(count):
     """Wait for the bio waste to pass by the phototransistor."""
-    count_pt_passes(txt.ext.bio_pt, count)
-    use_piston(txt.main.bio_input_valve, txt.ext.bio_output_valve)
+    count_pt_passes(txt.main.bio_pt, count)
+    use_piston(txt.main.bio_valve, txt.main.np_valve)
 
 
 def wait_for_np(count):
     """Wait for the non-plastic waste to pass by the phototransistor."""
-    count_pt_passes(txt.ext.np_pt, count)
-    use_piston(txt.main.np_input_valve, txt.ext.np_output_valve)
+    count_pt_passes(txt.main.np_pt, count)
+    use_piston(txt.main.np_valve)
 
 
 def wait_for_rec(count):
     """Wait for the recyclable waste to pass by the phototransistor."""
-    count_pt_passes(txt.ext.rec_pt, count)
-    use_piston(txt.main.rec_input_valve, txt.ext.rec_output_valve)
+    count_pt_passes(txt.main.rec_pt, count)
+    use_piston(txt.main.rec_valve)
 
 
 def wait_for_plastic(count):
     """Wait for the plastic waste to pass by the recyclable phototransistor."""
-    count_pt_passes(txt.ext.rec_pt, count)
+    count_pt_passes(txt.main.rec_pt, count)
     time.sleep(2)
 
 
@@ -108,42 +108,20 @@ def count_pt_passes(pt, count):
             pass
 
 
-def use_piston(open_valve, close_valve):
+def use_piston(valve):
     """Use the piston to sort the waste."""
-    txt.ext.back_motor.stop_sync()
+    txt.ext.back_motor.stop_sync(txt.ext.front_motor)
+
     txt.main.compressor.on()
-    open_valve.on()
-    time.sleep(0.3)
+    valve.on()
+    time.sleep(0.25)
     txt.main.compressor.off()
-    open_valve.off()
-    close_valve.on()
-    time.sleep(0.2)
-    close_valve.off()
+    valve.off()
 
 
 def test_outputs():
     print("Testing outputs...")
-    txt.ext.front_motor.set_speed(512)
-    txt.ext.back_motor.set_speed(512)
-    txt.ext.front_motor.start_sync(txt.ext.back_motor)
-
-    txt.main.bio_input_valve.on()
-    txt.main.np_input_valve.on()
-    txt.main.rec_input_valve.on()
-
-    txt.main.compressor.on()
-
-    txt.ext.bio_led.set_brightness(512)
-    txt.ext.np_led.set_brightness(512)
-    txt.ext.rec_led.set_brightness(512)
-
-    txt.main.bio_output_valve.on()
-    txt.main.np_output_valve.on()
-    txt.main.rec_output_valve.on()
-    print("Done.")
-
-    while True:
-        pass
+    input_loop()
 
 
 def test_model():
@@ -153,6 +131,64 @@ def test_model():
         detected = model.process_image(txt.main.camera.get_frame())
         print(detected)
         time.sleep(0.5)
+
+
+def input_loop():
+    compressor = False
+    while True:
+        w = input("> ").strip()
+
+        if w == "fm":
+            if not txt.ext.front_motor.is_running():
+                txt.ext.front_motor.set_speed(512)
+                txt.ext.front_motor.start()
+            else:
+                txt.ext.front_motor.stop()
+        elif w == "bm":
+            if not txt.ext.back_motor.is_running():
+                txt.ext.back_motor.set_speed(512)
+                txt.ext.back_motor.start()
+            else:
+                txt.ext.back_motor.stop()
+        elif w == "bi":
+            if txt.main.bio_valve.is_off():
+                txt.main.bio_valve.on()
+            else:
+                txt.main.bio_valve.off()
+        elif w == "ni":
+            if txt.main.np_valve.is_off():
+                txt.main.np_valve.on()
+            else:
+                txt.main.np_valve.off()
+        elif w == "ri":
+            if txt.main.rec_valve.is_off():
+                txt.main.rec_valve.on()
+            else:
+                txt.main.rec_valve.off()
+        elif w == "c":
+            if not compressor:
+                compressor = True
+                txt.main.compressor.on()
+            else:
+                compressor = False
+                txt.main.compressor.off()
+        elif w == "bl":
+            if txt.ext.bio_led.is_off():
+                txt.ext.bio_led.set_brightness(512)
+            else:
+                txt.ext.bio_led.set_brightness(0)
+        elif w == "nl":
+            if txt.ext.np_led.is_off():
+                txt.ext.np_led.set_brightness(512)
+            else:
+                txt.ext.np_led.set_brightness(0)
+        elif w == "rl":
+            if txt.ext.rec_led.is_off():
+                txt.ext.rec_led.set_brightness(512)
+            else:
+                txt.ext.rec_led.set_brightness(0)
+        else:
+            print("Unrecognized %s" % w)
 
 
 try:

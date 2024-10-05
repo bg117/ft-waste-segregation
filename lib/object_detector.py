@@ -40,7 +40,7 @@ class ObjectDetector(Detector):
         classes = np.squeeze(self.interpreter.get_tensor(output_details[3]["index"]))
 
         for idx, score in enumerate(scores):
-            if score > 0.5:
+            if score > 0.2:
                 x1 = int(max(0, positions[idx][1] * orig_width))
                 x2 = int(min(positions[idx][3] * orig_width, orig_width))
                 y1 = int(max(0, positions[idx][0] * orig_height))

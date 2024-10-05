@@ -21,27 +21,11 @@ class MainController:
         self.np_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 4)
         self.rec_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 5)
 
-        self.bio_output_valve = txt_factory.output_factory.create_magnetic_valve(
-            self._txt, 1
-        )
-        self.np_output_valve = txt_factory.output_factory.create_magnetic_valve(
-            self._txt, 2
-        )
-        self.rec_output_valve = txt_factory.output_factory.create_magnetic_valve(
-            self._txt, 3
-        )
+        self.bio_valve = txt_factory.output_factory.create_magnetic_valve(self._txt, 5)
+        self.np_valve = txt_factory.output_factory.create_magnetic_valve(self._txt, 6)
+        self.rec_valve = txt_factory.output_factory.create_magnetic_valve(self._txt, 7)
 
-        self.bio_input_valve = txt_factory.output_factory.create_magnetic_valve(
-            self._txt, 5
-        )
-        self.np_input_valve = txt_factory.output_factory.create_magnetic_valve(
-            self._txt, 6
-        )
-        self.rec_input_valve = txt_factory.output_factory.create_magnetic_valve(
-            self._txt, 7
-        )
-
-        self.compressor = txt_factory.output_factory.create_compressor(self._txt, 8)
+        self.compressor = txt_factory.output_factory.create_compressor(self._txt, 1)
 
         self.camera = txt_factory.usb_factory.create_camera(self._txt, 1)
 
@@ -50,7 +34,7 @@ class MainController:
         cam.set_height(240)
         cam.set_width(320)
         cam.set_fps(15)
-        cam.start()
+        # cam.start()
 
 
 class ExtController:
@@ -59,7 +43,7 @@ class ExtController:
 
         self.front_motor = txt_factory.motor_factory.create_encodermotor(self._txt, 1)
         self.back_motor = txt_factory.motor_factory.create_encodermotor(self._txt, 2)
-        
+
         self.bio_led = txt_factory.output_factory.create_led(self._txt, 5)
         self.np_led = txt_factory.output_factory.create_led(self._txt, 6)
         self.rec_led = txt_factory.output_factory.create_led(self._txt, 7)
