@@ -49,6 +49,7 @@ class ExtController:
         self.bio_led = txt_factory.output_factory.create_led(self._txt, 5)
         self.np_led = txt_factory.output_factory.create_led(self._txt, 6)
         self.rec_led = txt_factory.output_factory.create_led(self._txt, 7)
+        self.front_led = txt_factory.output_factory.create_led(self._txt, 8)
 
 
 class Controller:

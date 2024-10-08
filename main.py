@@ -31,6 +31,7 @@ def setup():
     txt.ext.bio_led.set_brightness(512)
     txt.ext.np_led.set_brightness(512)
     txt.ext.rec_led.set_brightness(512)
+    txt.ext.front_led.set_brightness(512)
 
 
 def loop():
@@ -180,6 +181,11 @@ def input_loop():
             else:
                 compressor = False
                 txt.main.compressor.off()
+        elif w == "fl":
+            if txt.ext.front_led.is_off():
+                txt.ext.front_led.set_brightness(512)
+            else:
+                txt.ext.front_led.set_brightness(0)       
         elif w == "bl":
             if txt.ext.bio_led.is_off():
                 txt.ext.bio_led.set_brightness(512)
