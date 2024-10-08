@@ -17,6 +17,8 @@ class MainController:
             txt_factory.input_factory.create_ultrasonic_distance_meter(self._txt, 2)
         )
 
+        self.front_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 7)
+
         self.bio_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 3)
         self.np_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 4)
         self.rec_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 5)

@@ -1,4 +1,4 @@
-import threading
+from threading import Thread, Lock
 import traceback
 import time
 import argparse
@@ -9,6 +9,9 @@ import lib.labels as labels
 
 txt = None  # type: Controller
 model = None  # type: ObjectDetector
+
+mutex_input = Lock()
+i = 0
 
 
 def prelude():
@@ -59,64 +62,69 @@ def move_waste():
     txt.ext.front_motor.stop_sync(txt.ext.back_motor)
 
 
-def segregate_waste(waste):
+def segregate_waste():
     """Segregates waste into its proper containers."""
-    for i, w in enumerate(waste):
-        if w["label"] == labels.BIODEGRADABLE:
-            threading.Thread(target=wait_for_bio, args=(i,)).start()
-        elif w["label"] == labels.CARDBOARD or w["label"] == labels.PAPER:
-            threading.Thread(target=wait_for_np, args=(i,)).start()
-        elif w["label"] == labels.GLASS or w["label"] == labels.METAL:
-            threading.Thread(target=wait_for_rec, args=(i,)).start()
-        else:  # plastic
-            # wait for the waste to fall into the bin
-            threading.Thread(target=wait_for_plastic, args=(i,)).start()
+    global i
+    wait_for_pt_pass(txt.main.front_pt)
+    i += 1
+    target = None
+
+    div2 = i % 2 == 0
+    div3 = i % 3 == 0
+
+    if div2 and div3: # if divisible by both 2 and 3
+        target = wait_for_bio
+    elif div2:
+        target = wait_for_np
+    elif div3:
+        target = wait_for_rec
+    else:
+        target = wait_for_plastic
+
+    Thread(target=target).start()
+        
+
+def wait_for_pt_pass(pt):
+    while pt.is_dark():
+        pass
+    while pt.is_bright():
+        pass 
 
 
-def wait_for_bio(count):
+def wait_for_bio():
     """Wait for the bio waste to pass by the phototransistor."""
-    count_pt_passes(txt.main.bio_pt, count)
+    wait_for_pt_pass(txt.main.bio_pt)
     use_piston(txt.main.bio_valve, txt.main.np_valve)
 
 
-def wait_for_np(count):
+def wait_for_np():
     """Wait for the non-plastic waste to pass by the phototransistor."""
-    count_pt_passes(txt.main.np_pt, count)
+    wait_for_pt_pass(txt.main.np_pt)
     use_piston(txt.main.np_valve)
 
 
-def wait_for_rec(count):
+def wait_for_rec():
     """Wait for the recyclable waste to pass by the phototransistor."""
-    count_pt_passes(txt.main.rec_pt, count)
+    wait_for_pt_pass(txt.main.rec_pt)
     use_piston(txt.main.rec_valve)
 
 
-def wait_for_plastic(count):
+def wait_for_plastic():
     """Wait for the plastic waste to pass by the recyclable phototransistor."""
-    count_pt_passes(txt.main.rec_pt, count)
+    wait_for_pt_pass(txt.main.rec_pt)
     time.sleep(2)
-
-
-def count_pt_passes(pt, count):
-    """Count the number of times the phototransistor goes from dark to bright, i.e. an object passes by."""
-    i = 0
-    while i < count:
-        while pt.is_dark():
-            pass
-        i += 1
-        while pt.is_bright():
-            pass
 
 
 def use_piston(valve):
     """Use the piston to sort the waste."""
-    txt.ext.back_motor.stop_sync(txt.ext.front_motor)
+    with mutex_input:
+        txt.ext.back_motor.stop_sync(txt.ext.front_motor)
 
-    txt.main.compressor.on()
-    valve.on()
-    time.sleep(0.25)
-    txt.main.compressor.off()
-    valve.off()
+        txt.main.compressor.on()
+        valve.on()
+        time.sleep(0.25)
+        txt.main.compressor.off()
+        valve.off()
 
 
 def test_outputs():
