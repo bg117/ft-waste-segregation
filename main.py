@@ -15,7 +15,6 @@ queue = Queue()
 mutex_input = Lock()
 
 i = 0
-threads = []
 
 
 def prelude():
@@ -63,21 +62,20 @@ def segregate_waste():
     div3 = i % 3 == 0
 
     if div2 and div3:  # if divisible by both 2 and 3
-        queue.put(labels.BIO)
+        queue.put((labels.BIO, i))
         target = wait_for_bio
     elif div2:
-        queue.put(labels.NP)
+        queue.put((labels.NP, i))
         target = wait_for_np
     elif div3:
-        queue.put(labels.REC)
+        queue.put((labels.REC, i))
         target = wait_for_rec
     else:
-        queue.put(labels.PLASTIC)
+        queue.put((labels.PLASTIC, i))
         target = wait_for_plastic
 
-    t = Thread(target=target)
+    t = Thread(target=target, args=(i,))
     t.start()
-    threads.append(t)
 
 
 def wait_for_pt_pass(pt):
@@ -87,33 +85,33 @@ def wait_for_pt_pass(pt):
         pass
 
 
-def wait_for_bio():
+def wait_for_bio(n):
     """Wait for the bio waste to pass by the phototransistor."""
-    while queue[0] != labels.BIO:
+    while queue.queue[0] != (labels.BIO, n):
         wait_for_pt_pass(txt.main.bio_pt)
     use_piston(txt.main.bio_valve, txt.main.np_valve)
     queue.get()
 
 
-def wait_for_np():
+def wait_for_np(n):
     """Wait for the non-plastic waste to pass by the phototransistor."""
-    while queue[0] != labels.NP:
+    while queue.queue[0] != (labels.NP, n):
         wait_for_pt_pass(txt.main.np_pt)
     use_piston(txt.main.np_valve)
     queue.get()
 
 
-def wait_for_rec():
+def wait_for_rec(n):
     """Wait for the recyclable waste to pass by the phototransistor."""
-    while queue[0] != labels.REC:
+    while queue.queue[0] != (labels.REC, n):
         wait_for_pt_pass(txt.main.rec_pt)
     use_piston(txt.main.rec_valve)
     queue.get()
 
 
-def wait_for_plastic():
+def wait_for_plastic(n):
     """Wait for the plastic waste to pass by the recyclable phototransistor."""
-    while queue[0] != labels.PLASTIC:
+    while queue.queue[0] != (labels.PLASTIC, n):
         wait_for_pt_pass(txt.main.rec_pt)
     time.sleep(2)
     queue.get()
