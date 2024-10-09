@@ -1,12 +1,5 @@
 import fischertechnik.factories as txt_factory
 
-txt_factory.init()
-txt_factory.init_input_factory()
-txt_factory.init_output_factory()
-txt_factory.init_motor_factory()
-txt_factory.init_usb_factory()
-txt_factory.init_camera_factory()
-
 
 class MainController:
     def __init__(self):
@@ -29,13 +22,13 @@ class MainController:
 
         self.compressor = txt_factory.output_factory.create_compressor(self._txt, 1)
 
-        self.camera = txt_factory.usb_factory.create_camera(self._txt, 1)
+        # self.camera = txt_factory.usb_factory.create_camera(self._txt, 1)
 
-        cam = self.camera
-        cam.set_rotate(False)
-        cam.set_height(240)
-        cam.set_width(320)
-        cam.set_fps(15)
+        # cam = self.camera
+        # cam.set_rotate(False)
+        # cam.set_height(240)
+        # cam.set_width(320)
+        # cam.set_fps(15)
         # cam.start()
 
 

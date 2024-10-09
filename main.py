@@ -1,4 +1,5 @@
 from threading import Thread, Lock
+from queue import Queue
 import traceback
 import time
 import argparse
@@ -10,8 +11,11 @@ import lib.labels as labels
 txt = None  # type: Controller
 model = None  # type: ObjectDetector
 
+queue = Queue()
 mutex_input = Lock()
+
 i = 0
+threads = []
 
 
 def prelude():
@@ -37,30 +41,15 @@ def setup():
 def loop():
     """Main loop of the program."""
     print("loop")
-    # wait until weight sensor is pressed
-    while not txt.main.push_button.is_closed():
-        pass
-
-    # check if there's really an object in front of the robot
-    if not txt.main.front_ultrasonic.get_distance() < 20:
-        return
-
-    move_waste()
-    waste = model.process_image(txt.main.camera.get_frame())
-
     # for each index, start a new thread to wait for the waste to pass by the phototransistor
-    segregate_waste(waste)
+    segregate_waste()
 
 
 def move_waste():
     """Move the waste to the sorting area."""
-    # move forward until the object is out of range
     txt.ext.front_motor.set_speed(256, Motor.CCW)
     txt.ext.back_motor.set_speed(256, Motor.CCW)
     txt.ext.front_motor.start_sync(txt.ext.back_motor)
-    while txt.main.front_ultrasonic.get_distance() < 20:
-        pass
-    txt.ext.front_motor.stop_sync(txt.ext.back_motor)
 
 
 def segregate_waste():
@@ -73,47 +62,61 @@ def segregate_waste():
     div2 = i % 2 == 0
     div3 = i % 3 == 0
 
-    if div2 and div3: # if divisible by both 2 and 3
+    if div2 and div3:  # if divisible by both 2 and 3
+        queue.put(labels.BIO)
         target = wait_for_bio
     elif div2:
+        queue.put(labels.NP)
         target = wait_for_np
     elif div3:
+        queue.put(labels.REC)
         target = wait_for_rec
     else:
+        queue.put(labels.PLASTIC)
         target = wait_for_plastic
 
-    Thread(target=target).start()
-        
+    t = Thread(target=target)
+    t.start()
+    threads.append(t)
+
 
 def wait_for_pt_pass(pt):
     while pt.is_dark():
         pass
     while pt.is_bright():
-        pass 
+        pass
 
 
 def wait_for_bio():
     """Wait for the bio waste to pass by the phototransistor."""
-    wait_for_pt_pass(txt.main.bio_pt)
+    while queue[0] != labels.BIO:
+        wait_for_pt_pass(txt.main.bio_pt)
     use_piston(txt.main.bio_valve, txt.main.np_valve)
+    queue.get()
 
 
 def wait_for_np():
     """Wait for the non-plastic waste to pass by the phototransistor."""
-    wait_for_pt_pass(txt.main.np_pt)
+    while queue[0] != labels.NP:
+        wait_for_pt_pass(txt.main.np_pt)
     use_piston(txt.main.np_valve)
+    queue.get()
 
 
 def wait_for_rec():
     """Wait for the recyclable waste to pass by the phototransistor."""
-    wait_for_pt_pass(txt.main.rec_pt)
+    while queue[0] != labels.REC:
+        wait_for_pt_pass(txt.main.rec_pt)
     use_piston(txt.main.rec_valve)
+    queue.get()
 
 
 def wait_for_plastic():
     """Wait for the plastic waste to pass by the recyclable phototransistor."""
-    wait_for_pt_pass(txt.main.rec_pt)
+    while queue[0] != labels.PLASTIC:
+        wait_for_pt_pass(txt.main.rec_pt)
     time.sleep(2)
+    queue.get()
 
 
 def use_piston(valve):
@@ -185,7 +188,7 @@ def input_loop():
             if txt.ext.front_led.is_off():
                 txt.ext.front_led.set_brightness(512)
             else:
-                txt.ext.front_led.set_brightness(0)       
+                txt.ext.front_led.set_brightness(0)
         elif w == "bl":
             if txt.ext.bio_led.is_off():
                 txt.ext.bio_led.set_brightness(512)
@@ -220,6 +223,11 @@ try:
         test_model()
     else:
         setup()
+        # wait until weight sensor is pressed
+        while not txt.main.push_button.is_closed():
+            pass
+
+        move_waste()
         while True:
             loop()
 except Exception:
