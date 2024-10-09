@@ -1,29 +1,31 @@
-from threading import Thread, Lock
-from queue import Queue
 import traceback
 import time
 import argparse
-from lib.controller import Controller
-from lib.object_detector import ObjectDetector
-from fischertechnik.controller.Motor import Motor
 import lib.labels as labels
 
+from threading import Event, Lock
+from queue import Queue
+from concurrent.futures import ThreadPoolExecutor
+from lib.controller import Controller
+from fischertechnik.controller.Motor import Motor
+
 txt = None  # type: Controller
-model = None  # type: ObjectDetector
 
 queue = Queue()
 mutex_input = Lock()
 
-i = 0
+executor = ThreadPoolExecutor()
+
+SLEEP_TIME = 0.001
 
 
 def prelude():
     """Prelude of the program."""
     print("prelude")
 
-    global txt, model
+    global txt # , model
     txt = Controller()
-    model = ObjectDetector("train/model.tflite", "train/labels.txt")
+    # model = ObjectDetector("train/model.tflite", "train/labels.txt")
 
 
 def setup():
@@ -37,11 +39,11 @@ def setup():
     txt.ext.front_led.set_brightness(512)
 
 
-def loop():
+def loop(i):
     """Main loop of the program."""
-    print("loop")
+    print("loop %d" % i)
     # for each index, start a new thread to wait for the waste to pass by the phototransistor
-    segregate_waste()
+    segregate_waste(i)
 
 
 def move_waste():
@@ -51,70 +53,65 @@ def move_waste():
     txt.ext.front_motor.start_sync(txt.ext.back_motor)
 
 
-def segregate_waste():
+def segregate_waste(i):
     """Segregates waste into its proper containers."""
-    global i
     wait_for_pt_pass(txt.main.front_pt)
-    i += 1
-    target = None
 
-    div2 = i % 2 == 0
-    div3 = i % 3 == 0
+    target_map = {
+        (True, True): (labels.BIO, wait_for_bio),
+        (True, False): (labels.NP, wait_for_np),
+        (False, True): (labels.REC, wait_for_rec),
+        (False, False): (labels.PLASTIC, wait_for_plastic),
+    }
 
-    if div2 and div3:  # if divisible by both 2 and 3
-        queue.put((labels.BIO, i))
-        target = wait_for_bio
-    elif div2:
-        queue.put((labels.NP, i))
-        target = wait_for_np
-    elif div3:
-        queue.put((labels.REC, i))
-        target = wait_for_rec
-    else:
-        queue.put((labels.PLASTIC, i))
-        target = wait_for_plastic
+    label, target = target_map[(i % 2 == 0, i % 3 == 0)]
 
-    t = Thread(target=target, args=(i,))
-    t.start()
+    queue.put((label, i))
+    executor.submit(target, i)
+
+
+def wait_for_queue(label, n, pt):
+    """Waits for the specific item in the queue and triggers the piston."""
+    while True:
+        try:
+            if queue.queue[0] == (label, n):
+                wait_for_pt_pass(pt)
+                queue.get()
+                break
+        except IndexError:
+            pass
+        Event().wait(SLEEP_TIME)
 
 
 def wait_for_pt_pass(pt):
     while pt.is_dark():
-        pass
+        Event().wait(SLEEP_TIME)
     while pt.is_bright():
-        pass
+        Event().wait(SLEEP_TIME)
 
 
 def wait_for_bio(n):
     """Wait for the bio waste to pass by the phototransistor."""
-    while queue.queue[0] != (labels.BIO, n):
-        wait_for_pt_pass(txt.main.bio_pt)
-    use_piston(txt.main.bio_valve, txt.main.np_valve)
-    queue.get()
+    wait_for_queue(labels.BIO, n, txt.main.bio_pt)
+    use_piston(txt.main.bio_valve)
 
 
 def wait_for_np(n):
     """Wait for the non-plastic waste to pass by the phototransistor."""
-    while queue.queue[0] != (labels.NP, n):
-        wait_for_pt_pass(txt.main.np_pt)
+    wait_for_queue(labels.NP, n, txt.main.np_pt)
     use_piston(txt.main.np_valve)
-    queue.get()
 
 
 def wait_for_rec(n):
     """Wait for the recyclable waste to pass by the phototransistor."""
-    while queue.queue[0] != (labels.REC, n):
-        wait_for_pt_pass(txt.main.rec_pt)
+    wait_for_queue(labels.REC, n, txt.main.rec_pt)
     use_piston(txt.main.rec_valve)
-    queue.get()
 
 
 def wait_for_plastic(n):
     """Wait for the plastic waste to pass by the recyclable phototransistor."""
-    while queue.queue[0] != (labels.PLASTIC, n):
-        wait_for_pt_pass(txt.main.rec_pt)
-    time.sleep(2)
-    queue.get()
+    wait_for_queue(labels.PLASTIC, n, txt.main.rec_pt)
+    Event().wait(1.5)
 
 
 def use_piston(valve):
@@ -134,91 +131,69 @@ def test_outputs():
     input_loop()
 
 
-def test_model():
-    # test the model on the camera feed
-    print("Testing model...")
-    while True:
-        detected = model.process_image(txt.main.camera.get_frame())
-        print(detected)
-        time.sleep(0.5)
+def handle_motor(motor, speed=512):
+    """Handles motor start/stop based on its current state."""
+    if not motor.is_running():
+        motor.set_speed(speed)
+        motor.start()
+    else:
+        motor.stop()
+
+def handle_valve(valve):
+    """Handles valve on/off based on its current state."""
+    if valve.is_off():
+        valve.on()
+    else:
+        valve.off()
+
+
+def handle_led(led):
+    """Handles LED on/off based on its current state."""
+    if led.is_off():
+        led.set_brightness(512)
+    else:
+        led.set_brightness(0)
 
 
 def input_loop():
     compressor = False
+    command_map = {
+        "fm": lambda: handle_motor(txt.ext.front_motor),
+        "bm": lambda: handle_motor(txt.ext.back_motor),
+        "bi": lambda: handle_valve(txt.main.bio_valve),
+        "ni": lambda: handle_valve(txt.main.np_valve),
+        "ri": lambda: handle_valve(txt.main.rec_valve),
+        "fl": lambda: handle_led(txt.ext.front_led),
+        "bl": lambda: handle_led(txt.ext.bio_led),
+        "nl": lambda: handle_led(txt.ext.np_led),
+    }
+
     while True:
         w = input("> ").strip()
-
-        if w == "fm":
-            if not txt.ext.front_motor.is_running():
-                txt.ext.front_motor.set_speed(512)
-                txt.ext.front_motor.start()
-            else:
-                txt.ext.front_motor.stop()
-        elif w == "bm":
-            if not txt.ext.back_motor.is_running():
-                txt.ext.back_motor.set_speed(512)
-                txt.ext.back_motor.start()
-            else:
-                txt.ext.back_motor.stop()
-        elif w == "bi":
-            if txt.main.bio_valve.is_off():
-                txt.main.bio_valve.on()
-            else:
-                txt.main.bio_valve.off()
-        elif w == "ni":
-            if txt.main.np_valve.is_off():
-                txt.main.np_valve.on()
-            else:
-                txt.main.np_valve.off()
-        elif w == "ri":
-            if txt.main.rec_valve.is_off():
-                txt.main.rec_valve.on()
-            else:
-                txt.main.rec_valve.off()
+        if w in command_map:
+            command_map[w]()
         elif w == "c":
-            if not compressor:
-                compressor = True
+            compressor = not compressor
+            if compressor:
                 txt.main.compressor.on()
             else:
-                compressor = False
                 txt.main.compressor.off()
-        elif w == "fl":
-            if txt.ext.front_led.is_off():
-                txt.ext.front_led.set_brightness(512)
-            else:
-                txt.ext.front_led.set_brightness(0)
-        elif w == "bl":
-            if txt.ext.bio_led.is_off():
-                txt.ext.bio_led.set_brightness(512)
-            else:
-                txt.ext.bio_led.set_brightness(0)
-        elif w == "nl":
-            if txt.ext.np_led.is_off():
-                txt.ext.np_led.set_brightness(512)
-            else:
-                txt.ext.np_led.set_brightness(0)
-        elif w == "rl":
-            if txt.ext.rec_led.is_off():
-                txt.ext.rec_led.set_brightness(512)
-            else:
-                txt.ext.rec_led.set_brightness(0)
+        elif w == "q":
+            break
         else:
             print("Unrecognized %s" % w)
 
 
-try:
+def main():
     prelude()
 
     # parse arguments (-i/--debug-input, -m/--debug-model)
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--debug-input", action="store_true")
-    parser.add_argument("-m", "--debug-model", action="store_true")
     args = parser.parse_args()
 
     if args.debug_input:
         test_outputs()
-    elif args.debug_model:
-        test_model()
     else:
         setup()
         # wait until weight sensor is pressed
@@ -228,5 +203,9 @@ try:
         move_waste()
         while True:
             loop()
+
+
+try:
+    main()
 except Exception:
     print(traceback.format_exc())
