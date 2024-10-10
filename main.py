@@ -17,8 +17,6 @@ mutex_stdout = Lock()
 
 executor = ThreadPoolExecutor()
 
-SLEEP_TIME = 0.001
-
 
 def prelude():
     """Prelude of the program."""
@@ -39,6 +37,8 @@ def setup():
     txt.ext.rec_led.set_brightness(512)
     txt.ext.front_led.set_brightness(512)
 
+    txt.main.compressor.on()
+
 
 def loop(i):
     """Main loop of the program."""
@@ -49,9 +49,10 @@ def loop(i):
 
 def move_waste():
     """Move the waste to the sorting area."""
-    txt.ext.front_motor.set_speed(256, Motor.CCW)
-    txt.ext.back_motor.set_speed(256, Motor.CCW)
-    txt.ext.back_motor.start_sync(txt.ext.front_motor)
+    txt.ext.front_motor.set_speed(200, Motor.CCW)
+    txt.ext.back_motor.set_speed(200, Motor.CCW)
+    txt.ext.front_motor.start()
+    txt.ext.back_motor.start()
 
 
 def segregate_waste(i):
@@ -85,16 +86,15 @@ def wait_for_queue(label, n, pt):
                 break
         except IndexError:
             pass
-        Event().wait(SLEEP_TIME)
 
 
 def wait_for_pt_pass(pt):
-    while pt.is_dark():
-        Event().wait(SLEEP_TIME)
+    while not pt.is_dark():
+        pass
     with mutex_stdout:
         print("pt pass")
-    while pt.is_bright():
-        Event().wait(SLEEP_TIME)
+    while not pt.is_bright():
+        pass
     with mutex_stdout:
         print("pt stop")
 
@@ -120,7 +120,7 @@ def wait_for_rec(n):
 def wait_for_plastic(n):
     """Wait for the plastic waste to pass by the recyclable phototransistor."""
     wait_for_queue(labels.PLASTIC, n, txt.main.rec_pt)
-    Event().wait(1.5)
+    time.sleep(1)
 
 
 def use_piston(valve):
@@ -128,11 +128,11 @@ def use_piston(valve):
     with mutex_input:
         txt.ext.back_motor.stop_sync(txt.ext.front_motor)
 
-        txt.main.compressor.on()
         valve.on()
         time.sleep(0.25)
-        txt.main.compressor.off()
         valve.off()
+
+        move_waste()
 
 
 def test_outputs():
@@ -212,7 +212,7 @@ def main():
 
         move_waste()
 
-        i = 0
+        i = 1
         while True:
             loop(i)
             i += 1
