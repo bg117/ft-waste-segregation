@@ -1,4 +1,4 @@
-BIO = 1
-NP = 2
-REC = 3
-PLASTIC = 4
+BIO = "bio,1"
+NP = "np,2"
+REC = "rec,3"
+PLASTIC = "plastic,3"

@@ -57,7 +57,7 @@ def move_waste():
 
 def segregate_waste(i):
     """Segregates waste into its proper containers."""
-    wait_for_pt_pass(txt.main.front_pt)
+    wait_for_pt_pass(txt.main.front_pt, "front")
 
     target_map = {
         (True, True): (labels.BIO, wait_for_bio),
@@ -73,53 +73,54 @@ def segregate_waste(i):
     executor.submit(target, i)
 
 
-def wait_for_queue(label, n, pt):
+def wait_for_queue(label, n, pt, s):
     """Waits for the specific item in the queue and triggers the piston."""
+    with mutex_stdout:
+        print("waiting for %s, %d" % (label, n))
     while True:
         try:
             if queue.queue[0] == (label, n):
-                wait_for_pt_pass(pt)
+                wait_for_pt_pass(pt, s)
                 queue.get()
                 with mutex_stdout:
                     print("queue.get() == %s" % label)
-                    print(queue)
+                    print(queue.queue)
                 break
         except IndexError:
             pass
 
 
-def wait_for_pt_pass(pt):
+def wait_for_pt_pass(pt, s):
+    """Wait for the waste to pass by the phototransistor."""
+    with mutex_stdout:
+        print("waiting for pt %s" % s)
     while not pt.is_dark():
         pass
-    with mutex_stdout:
-        print("pt pass")
     while not pt.is_bright():
         pass
-    with mutex_stdout:
-        print("pt stop")
 
 
 def wait_for_bio(n):
     """Wait for the bio waste to pass by the phototransistor."""
-    wait_for_queue(labels.BIO, n, txt.main.bio_pt)
+    wait_for_queue(labels.BIO, n, txt.main.bio_pt, "bio")
     use_piston(txt.main.bio_valve)
 
 
 def wait_for_np(n):
     """Wait for the non-plastic waste to pass by the phototransistor."""
-    wait_for_queue(labels.NP, n, txt.main.np_pt)
+    wait_for_queue(labels.NP, n, txt.main.np_pt, "np")
     use_piston(txt.main.np_valve)
 
 
 def wait_for_rec(n):
     """Wait for the recyclable waste to pass by the phototransistor."""
-    wait_for_queue(labels.REC, n, txt.main.rec_pt)
+    wait_for_queue(labels.REC, n, txt.main.rec_pt, "rec")
     use_piston(txt.main.rec_valve)
 
 
 def wait_for_plastic(n):
     """Wait for the plastic waste to pass by the recyclable phototransistor."""
-    wait_for_queue(labels.PLASTIC, n, txt.main.rec_pt)
+    wait_for_queue(labels.PLASTIC, n, txt.main.rec_pt, "plastic")
     time.sleep(1)
 
 
