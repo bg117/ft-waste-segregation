@@ -23,7 +23,7 @@ def prelude():
     """Prelude of the program."""
     print("prelude")
 
-    global txt # , model
+    global txt  # , model
     txt = Controller()
     # model = ObjectDetector("train/model.tflite", "train/labels.txt")
 
@@ -139,6 +139,7 @@ def handle_motor(motor, speed=512):
     else:
         motor.stop()
 
+
 def handle_valve(valve):
     """Handles valve on/off based on its current state."""
     if valve.is_off():
@@ -201,8 +202,11 @@ def main():
             pass
 
         move_waste()
+
+        i = 0
         while True:
-            loop()
+            loop(i)
+            i += 1
 
 
 try:
