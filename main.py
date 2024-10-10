@@ -13,6 +13,7 @@ txt = None  # type: Controller
 
 queue = Queue()
 mutex_input = Lock()
+mutex_stdout = Lock()
 
 executor = ThreadPoolExecutor()
 
@@ -50,7 +51,7 @@ def move_waste():
     """Move the waste to the sorting area."""
     txt.ext.front_motor.set_speed(256, Motor.CCW)
     txt.ext.back_motor.set_speed(256, Motor.CCW)
-    txt.ext.front_motor.start_sync(txt.ext.back_motor)
+    txt.ext.back_motor.start_sync(txt.ext.front_motor)
 
 
 def segregate_waste(i):
@@ -67,6 +68,7 @@ def segregate_waste(i):
     label, target = target_map[(i % 2 == 0, i % 3 == 0)]
 
     queue.put((label, i))
+    print("queue.put(%s, %d)" % (label, i))
     executor.submit(target, i)
 
 
@@ -77,6 +79,9 @@ def wait_for_queue(label, n, pt):
             if queue.queue[0] == (label, n):
                 wait_for_pt_pass(pt)
                 queue.get()
+                with mutex_stdout:
+                    print("queue.get() == %s" % label)
+                    print(queue)
                 break
         except IndexError:
             pass
@@ -86,8 +91,12 @@ def wait_for_queue(label, n, pt):
 def wait_for_pt_pass(pt):
     while pt.is_dark():
         Event().wait(SLEEP_TIME)
+    with mutex_stdout:
+        print("pt pass")
     while pt.is_bright():
         Event().wait(SLEEP_TIME)
+    with mutex_stdout:
+        print("pt stop")
 
 
 def wait_for_bio(n):
@@ -198,8 +207,8 @@ def main():
     else:
         setup()
         # wait until weight sensor is pressed
-        while not txt.main.push_button.is_closed():
-            pass
+        # while not txt.main.push_button.is_closed():
+            # pass
 
         move_waste()
 

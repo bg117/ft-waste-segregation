@@ -1,8 +1,13 @@
 import fischertechnik.factories as txt_factory
 
+txt_factory.init()
+txt_factory.init_input_factory()
+txt_factory.init_output_factory()
+txt_factory.init_motor_factory()
 
 class MainController:
     def __init__(self):
+        print("init main controller")
         self._txt = txt_factory.controller_factory.create_graphical_controller()
 
         self.push_button = txt_factory.input_factory.create_mini_switch(self._txt, 1)
@@ -34,7 +39,8 @@ class MainController:
 
 class ExtController:
     def __init__(self):
-        self._txt = txt_factory.controller_factory.create_graphical_controller(2)
+        print("init ext controller")
+        self._txt = txt_factory.controller_factory.create_graphical_controller(1)
 
         self.front_motor = txt_factory.motor_factory.create_encodermotor(self._txt, 1)
         self.back_motor = txt_factory.motor_factory.create_encodermotor(self._txt, 2)
@@ -47,14 +53,11 @@ class ExtController:
 
 class Controller:
     def __init__(self):
-        txt_factory.init()
-        txt_factory.init_input_factory()
-        txt_factory.init_output_factory()
-        txt_factory.init_motor_factory()
-        txt_factory.init_usb_factory()
-        txt_factory.init_camera_factory()
+        # txt_factory.init_usb_factory()
+        # txt_factory.init_camera_factory()
 
         self.main = MainController()
         self.ext = ExtController()
 
         txt_factory.initialized()
+        print("controller init done")

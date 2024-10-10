@@ -1,7 +1,8 @@
 param (
     [string[]]$src,
     [string]$dest,
-    [switch]$usb
+    [switch]$usb,
+    [switch]$ssh
 )
 
 # Determine IP address based on the first argument
@@ -20,6 +21,8 @@ Write-Host "Executing: $scpCommand"
 Invoke-Expression $scpCommand
 
 # SSH command to create a new session
-$sshCommand = "ssh ft@$ip"
-Write-Host "Starting SSH session: $sshCommand"
-Invoke-Expression $sshCommand
+if ($ssh) {
+    $sshCommand = "ssh ft@$ip"
+    Write-Host "Starting SSH session: $sshCommand"
+    Invoke-Expression $sshCommand
+}
