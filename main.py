@@ -14,22 +14,13 @@ waste_queue = queue.Queue()
 output_mutex = threading.Lock()
 input_mutex = threading.Lock()
 
-# Events for waste detection
-front_waste_event = threading.Event()
-bio_waste_event = threading.Event()
-np_waste_event = threading.Event()
-recyclable_waste_event = threading.Event()
-plastic_waste_event = threading.Event()
 
-
-def phototransistor_event_loop(waste_event, phototransistor):
-    """Monitors the phototransistor and triggers the event when waste is detected."""
-    while True:
-        if phototransistor.is_dark():
-            while not phototransistor.is_bright():
-                time.sleep(0.02)
-            waste_event.set()
-        time.sleep(0.02)
+def wait_for_phototransistor(phototransistor):
+    """Waits for the phototransistor to detect waste."""
+    while not phototransistor.is_dark():
+        time.sleep(0.01)
+    while phototransistor.is_dark():
+        time.sleep(0.01)
 
 
 def initialize_controller():
@@ -51,24 +42,6 @@ def configure_robot():
 
     txt.main.compressor.on()
 
-    # Start phototransistor event loops
-    threading.Thread(
-        target=phototransistor_event_loop, args=(front_waste_event, txt.main.front_pt)
-    ).start()
-    threading.Thread(
-        target=phototransistor_event_loop, args=(bio_waste_event, txt.main.bio_pt)
-    ).start()
-    threading.Thread(
-        target=phototransistor_event_loop, args=(np_waste_event, txt.main.np_pt)
-    ).start()
-    threading.Thread(
-        target=phototransistor_event_loop,
-        args=(recyclable_waste_event, txt.main.rec_pt),
-    ).start()
-    threading.Thread(
-        target=phototransistor_event_loop, args=(plastic_waste_event, txt.main.rec_pt)
-    ).start()
-
 
 def safe_print(*args, **kwargs):
     """Thread-safe print function."""
@@ -84,7 +57,7 @@ def process_waste_item(item_index):
 
 def move_waste_to_sorting_area():
     """Moves waste to the sorting area."""
-    txt.ext.front_motor.set_speed(200, Motor.CCW)
+    txt.ext.front_motor.set_speed(300, Motor.CCW)
     txt.ext.back_motor.set_speed(200, Motor.CCW)
     txt.ext.front_motor.start()
     txt.ext.back_motor.start()
@@ -103,21 +76,20 @@ def classify_and_sort_waste(item_index):
         (item_index % 2 == 0, item_index % 3 == 0)
     ]
 
-    wait_for_waste_event(
-        front_waste_event
-    )  # Wait for waste to reach the front phototransistor
+    wait_for_phototransistor(txt.main.front_pt)
     waste_queue.put((waste_label, item_index))
     safe_print("{}: pushed {} to the queue".format(item_index, waste_label))
     threading.Thread(target=sorting_function, args=(item_index,)).start()
 
 
-def wait_for_queue_item(waste_label, item_index, waste_event):
+def wait_for_queue_item(waste_label, item_index, phototransistor):
     """Waits for a specific waste item in the queue and triggers the sorting piston when detected."""
     safe_print("{}: waiting for {}".format(item_index, waste_label))
 
     while True:
         if waste_queue.queue and waste_queue.queue[0] == (waste_label, item_index):
-            wait_for_waste_event(waste_event)
+            safe_print("{}: {} detected".format(item_index, waste_label))
+            wait_for_phototransistor(phototransistor)
             safe_print("{}: {} passed".format(item_index, waste_label))
             waste_queue.get()
             waste_queue.task_done()
@@ -132,25 +104,25 @@ def wait_for_waste_event(waste_event):
 
 def handle_bio_waste(item_index):
     """Handles bio-waste sorting."""
-    wait_for_queue_item(waste_labels.BIO, item_index, bio_waste_event)
+    wait_for_queue_item(waste_labels.BIO, item_index, txt.main.bio_pt)
     activate_sorting_piston(txt.main.bio_valve)
 
 
 def handle_np_waste(item_index):
     """Handles non-plastic waste sorting."""
-    wait_for_queue_item(waste_labels.NP, item_index, np_waste_event)
+    wait_for_queue_item(waste_labels.NP, item_index, txt.main.np_pt)
     activate_sorting_piston(txt.main.np_valve)
 
 
 def handle_recyclable_waste(item_index):
     """Handles recyclable waste sorting."""
-    wait_for_queue_item(waste_labels.REC, item_index, recyclable_waste_event)
+    wait_for_queue_item(waste_labels.REC, item_index, txt.main.rec_pt)
     activate_sorting_piston(txt.main.rec_valve)
 
 
 def handle_plastic_waste(item_index):
     """Handles plastic waste sorting."""
-    wait_for_queue_item(waste_labels.PLASTIC, item_index, plastic_waste_event)
+    wait_for_queue_item(waste_labels.PLASTIC, item_index, txt.main.rec_pt)
     time.sleep(1)
 
 
