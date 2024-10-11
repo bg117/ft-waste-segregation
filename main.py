@@ -94,7 +94,7 @@ def classify_and_sort_waste(item_index):
 
     wait_for_waste_event(front_waste_event) # Wait for waste to reach the front phototransistor
     waste_queue.put((waste_label, item_index))
-    safe_print("{}: pushed {} to the queue".format(waste_label, item_index))
+    safe_print("{}: pushed {} to the queue".format(item_index, waste_label))
     executor.submit(sorting_function, item_index)
 
 
