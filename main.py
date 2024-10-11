@@ -58,7 +58,7 @@ def configure_robot():
     executor.submit(phototransistor_event_loop, np_waste_event, txt.main.np_pt)
     executor.submit(phototransistor_event_loop, recyclable_waste_event, txt.main.rec_pt)
     executor.submit(phototransistor_event_loop, plastic_waste_event, txt.main.rec_pt)
-    executor.submit(phototransistor_event_loop, front_waste_event, txt.ext.front_pt)
+    executor.submit(phototransistor_event_loop, front_waste_event, txt.main.front_pt)
 
 
 def safe_print(*args, **kwargs):
