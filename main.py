@@ -1,9 +1,8 @@
 import argparse
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor
-from queue import Queue
-from threading import Event, Lock
+import queue
+import threading
 
 from fischertechnik.controller.Motor import Motor
 from lib.controller import Controller
@@ -11,18 +10,16 @@ import lib.labels as waste_labels
 
 # Global Variables and Initialization
 txt = None  # type: Controller
-waste_queue = Queue()
-output_mutex = Lock()
-input_mutex = Lock()
-
-executor = ThreadPoolExecutor()
+waste_queue = queue.Queue()
+output_mutex = threading.Lock()
+input_mutex = threading.Lock()
 
 # Events for waste detection
-front_waste_event = Event()
-bio_waste_event = Event()
-np_waste_event = Event()
-recyclable_waste_event = Event()
-plastic_waste_event = Event()
+front_waste_event = threading.Event()
+bio_waste_event = threading.Event()
+np_waste_event = threading.Event()
+recyclable_waste_event = threading.Event()
+plastic_waste_event = threading.Event()
 
 
 def phototransistor_event_loop(waste_event, phototransistor):
@@ -55,11 +52,22 @@ def configure_robot():
     txt.main.compressor.on()
 
     # Start phototransistor event loops
-    executor.submit(phototransistor_event_loop, bio_waste_event, txt.main.bio_pt)
-    executor.submit(phototransistor_event_loop, np_waste_event, txt.main.np_pt)
-    executor.submit(phototransistor_event_loop, recyclable_waste_event, txt.main.rec_pt)
-    executor.submit(phototransistor_event_loop, plastic_waste_event, txt.main.rec_pt)
-    executor.submit(phototransistor_event_loop, front_waste_event, txt.main.front_pt)
+    threading.Thread(
+        target=phototransistor_event_loop, args=(front_waste_event, txt.main.front_pt)
+    ).start()
+    threading.Thread(
+        target=phototransistor_event_loop, args=(bio_waste_event, txt.main.bio_pt)
+    ).start()
+    threading.Thread(
+        target=phototransistor_event_loop, args=(np_waste_event, txt.main.np_pt)
+    ).start()
+    threading.Thread(
+        target=phototransistor_event_loop,
+        args=(recyclable_waste_event, txt.main.rec_pt),
+    ).start()
+    threading.Thread(
+        target=phototransistor_event_loop, args=(plastic_waste_event, txt.main.rec_pt)
+    ).start()
 
 
 def safe_print(*args, **kwargs):
@@ -91,12 +99,16 @@ def classify_and_sort_waste(item_index):
         (False, False): (waste_labels.PLASTIC, handle_plastic_waste),
     }
 
-    waste_label, sorting_function = waste_sorting_map[(item_index % 2 == 0, item_index % 3 == 0)]
+    waste_label, sorting_function = waste_sorting_map[
+        (item_index % 2 == 0, item_index % 3 == 0)
+    ]
 
-    wait_for_waste_event(front_waste_event) # Wait for waste to reach the front phototransistor
+    wait_for_waste_event(
+        front_waste_event
+    )  # Wait for waste to reach the front phototransistor
     waste_queue.put((waste_label, item_index))
     safe_print("{}: pushed {} to the queue".format(item_index, waste_label))
-    executor.submit(sorting_function, item_index)
+    threading.Thread(target=sorting_function, args=(item_index,)).start()
 
 
 def wait_for_queue_item(waste_label, item_index, waste_event):
