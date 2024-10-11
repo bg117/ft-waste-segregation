@@ -1,37 +1,50 @@
-import traceback
-import time
 import argparse
-import lib.labels as labels
-
-from threading import Event, Lock
-from queue import Queue
+import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
-from lib.controller import Controller
+from queue import Queue
+from threading import Event, Lock
+
 from fischertechnik.controller.Motor import Motor
+from lib.controller import Controller
+import lib.labels as waste_labels
 
+# Global Variables and Initialization
 txt = None  # type: Controller
-
-queue = Queue()
-mutex_input = Lock()
-mutex_stdout = Lock()
+waste_queue = Queue()
+output_mutex = Lock()
+input_mutex = Lock()
 
 executor = ThreadPoolExecutor()
 
+# Events for waste detection
+bio_waste_event = Event()
+np_waste_event = Event()
+recyclable_waste_event = Event()
+plastic_waste_event = Event()
 
-def prelude():
-    """Prelude of the program."""
-    print("prelude")
 
-    global txt  # , model
+def phototransistor_event_loop(waste_event, phototransistor):
+    """Monitors the phototransistor and triggers the event when waste is detected."""
+    while True:
+        if phototransistor.is_dark():
+            while not phototransistor.is_bright():
+                pass
+            waste_event.set()
+
+
+def initialize_controller():
+    """Initializes the robot controller."""
+    global txt
     txt = Controller()
-    # model = ObjectDetector("train/model.tflite", "train/labels.txt")
+    print("Controller initialized.")
 
 
-def setup():
-    """Setup the robot before the main loop."""
-    print("setup")
+def configure_robot():
+    """Configures the robot components before starting the main loop."""
+    print("Configuring robot...")
 
-    # turn on LEDs for the phototransistors
+    # Set brightness for LEDs and turn on the compressor
     txt.ext.bio_led.set_brightness(512)
     txt.ext.np_led.set_brightness(512)
     txt.ext.rec_led.set_brightness(512)
@@ -39,110 +52,105 @@ def setup():
 
     txt.main.compressor.on()
 
+    # Start phototransistor event loops
+    executor.submit(phototransistor_event_loop, bio_waste_event, txt.main.bio_pt)
+    executor.submit(phototransistor_event_loop, np_waste_event, txt.main.np_pt)
+    executor.submit(phototransistor_event_loop, recyclable_waste_event, txt.main.rec_pt)
+    executor.submit(phototransistor_event_loop, plastic_waste_event, txt.main.rec_pt)
 
-def loop(i):
-    """Main loop of the program."""
-    print("loop %d" % i)
-    # for each index, start a new thread to wait for the waste to pass by the phototransistor
-    segregate_waste(i)
+
+def safe_print(*args, **kwargs):
+    """Thread-safe print function."""
+    with output_mutex:
+        print(*args, **kwargs)
 
 
-def move_waste():
-    """Move the waste to the sorting area."""
+def process_waste_item(item_index):
+    """Main loop to process each waste item."""
+    safe_print("Processing waste item {}".format(item_index))
+    classify_and_sort_waste(item_index)
+
+
+def move_waste_to_sorting_area():
+    """Moves waste to the sorting area."""
     txt.ext.front_motor.set_speed(200, Motor.CCW)
     txt.ext.back_motor.set_speed(200, Motor.CCW)
     txt.ext.front_motor.start()
     txt.ext.back_motor.start()
 
 
-def segregate_waste(i):
-    """Segregates waste into its proper containers."""
-    wait_for_pt_pass(txt.main.front_pt, "front")
-
-    target_map = {
-        (True, True): (labels.BIO, wait_for_bio),
-        (True, False): (labels.NP, wait_for_np),
-        (False, True): (labels.REC, wait_for_rec),
-        (False, False): (labels.PLASTIC, wait_for_plastic),
+def classify_and_sort_waste(item_index):
+    """Classifies the waste type and directs it to the appropriate container."""
+    waste_sorting_map = {
+        (True, True): (waste_labels.BIO, handle_bio_waste),
+        (True, False): (waste_labels.NP, handle_np_waste),
+        (False, True): (waste_labels.REC, handle_recyclable_waste),
+        (False, False): (waste_labels.PLASTIC, handle_plastic_waste),
     }
 
-    label, target = target_map[(i % 2 == 0, i % 3 == 0)]
+    waste_label, sorting_function = waste_sorting_map[(item_index % 2 == 0, item_index % 3 == 0)]
+    waste_queue.put((waste_label, item_index))
+    safe_print("{}: pushed {} to the queue".format(waste_label, item_index))
+    executor.submit(sorting_function, item_index)
 
-    queue.put((label, i))
-    print("queue.put(%s, %d)" % (label, i))
-    executor.submit(target, i)
 
+def wait_for_queue_item(waste_label, item_index, waste_event):
+    """Waits for a specific waste item in the queue and triggers the sorting piston when detected."""
+    safe_print("{}: waiting for {}".format(item_index, waste_label))
 
-def wait_for_queue(label, n, pt, s):
-    """Waits for the specific item in the queue and triggers the piston."""
-    with mutex_stdout:
-        print("waiting for %s, %d" % (label, n))
     while True:
-        try:
-            if queue.queue[0] == (label, n):
-                wait_for_pt_pass(pt, s)
-                queue.get()
-                with mutex_stdout:
-                    print("queue.get() == %s" % label)
-                    print(queue.queue)
-                break
-        except IndexError:
-            pass
+        if waste_queue.queue and waste_queue.queue[0] == (waste_label, item_index):
+            wait_for_waste_event(waste_event)
+            safe_print("{}: {} passed".format(item_index, waste_label))
+            waste_queue.get()
+            waste_queue.task_done()
+            break
 
 
-def wait_for_pt_pass(pt, s):
-    """Wait for the waste to pass by the phototransistor."""
-    with mutex_stdout:
-        print("waiting for pt %s" % s)
-    while not pt.is_dark():
-        pass
-    while not pt.is_bright():
-        pass
+def wait_for_waste_event(waste_event):
+    """Waits for the waste detection event."""
+    waste_event.wait()
+    waste_event.clear()
 
 
-def wait_for_bio(n):
-    """Wait for the bio waste to pass by the phototransistor."""
-    wait_for_queue(labels.BIO, n, txt.main.bio_pt, "bio")
-    use_piston(txt.main.bio_valve)
+def handle_bio_waste(item_index):
+    """Handles bio-waste sorting."""
+    wait_for_queue_item(waste_labels.BIO, item_index, bio_waste_event)
+    activate_sorting_piston(txt.main.bio_valve)
 
 
-def wait_for_np(n):
-    """Wait for the non-plastic waste to pass by the phototransistor."""
-    wait_for_queue(labels.NP, n, txt.main.np_pt, "np")
-    use_piston(txt.main.np_valve)
+def handle_np_waste(item_index):
+    """Handles non-plastic waste sorting."""
+    wait_for_queue_item(waste_labels.NP, item_index, np_waste_event)
+    activate_sorting_piston(txt.main.np_valve)
 
 
-def wait_for_rec(n):
-    """Wait for the recyclable waste to pass by the phototransistor."""
-    wait_for_queue(labels.REC, n, txt.main.rec_pt, "rec")
-    use_piston(txt.main.rec_valve)
+def handle_recyclable_waste(item_index):
+    """Handles recyclable waste sorting."""
+    wait_for_queue_item(waste_labels.REC, item_index, recyclable_waste_event)
+    activate_sorting_piston(txt.main.rec_valve)
 
 
-def wait_for_plastic(n):
-    """Wait for the plastic waste to pass by the recyclable phototransistor."""
-    wait_for_queue(labels.PLASTIC, n, txt.main.rec_pt, "plastic")
+def handle_plastic_waste(item_index):
+    """Handles plastic waste sorting."""
+    wait_for_queue_item(waste_labels.PLASTIC, item_index, plastic_waste_event)
     time.sleep(1)
 
 
-def use_piston(valve):
-    """Use the piston to sort the waste."""
-    with mutex_input:
+def activate_sorting_piston(valve):
+    """Activates the piston to sort the waste."""
+    with input_mutex:
         txt.ext.back_motor.stop_sync(txt.ext.front_motor)
 
         valve.on()
-        time.sleep(0.25)
+        time.sleep(0.33)
         valve.off()
 
-        move_waste()
-
-
-def test_outputs():
-    print("Testing outputs...")
-    input_loop()
+        move_waste_to_sorting_area()
 
 
 def handle_motor(motor, speed=512):
-    """Handles motor start/stop based on its current state."""
+    """Starts or stops the motor based on its current state."""
     if not motor.is_running():
         motor.set_speed(speed)
         motor.start()
@@ -151,7 +159,7 @@ def handle_motor(motor, speed=512):
 
 
 def handle_valve(valve):
-    """Handles valve on/off based on its current state."""
+    """Opens or closes the valve based on its current state."""
     if valve.is_off():
         valve.on()
     else:
@@ -159,7 +167,7 @@ def handle_valve(valve):
 
 
 def handle_led(led):
-    """Handles LED on/off based on its current state."""
+    """Toggles the LED on or off."""
     if led.is_off():
         led.set_brightness(512)
     else:
@@ -167,7 +175,8 @@ def handle_led(led):
 
 
 def input_loop():
-    compressor = False
+    """Handles user input to control the system."""
+    compressor_active = False
     command_map = {
         "fm": lambda: handle_motor(txt.ext.front_motor),
         "bm": lambda: handle_motor(txt.ext.back_motor),
@@ -180,46 +189,43 @@ def input_loop():
     }
 
     while True:
-        w = input("> ").strip()
-        if w in command_map:
-            command_map[w]()
-        elif w == "c":
-            compressor = not compressor
-            if compressor:
+        command = input("> ").strip()
+        if command in command_map:
+            command_map[command]()
+        elif command == "c":
+            compressor_active = not compressor_active
+            if compressor_active:
                 txt.main.compressor.on()
             else:
                 txt.main.compressor.off()
-        elif w == "q":
+        elif command == "q":
             break
         else:
-            print("Unrecognized %s" % w)
+            print("Unrecognized command: {}".format(command))
 
 
 def main():
-    prelude()
+    """Main entry point of the program."""
+    initialize_controller()
 
-    # parse arguments (-i/--debug-input, -m/--debug-model)
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--debug-input", action="store_true")
     args = parser.parse_args()
 
     if args.debug_input:
-        test_outputs()
+        input_loop()
     else:
-        setup()
-        # wait until weight sensor is pressed
-        # while not txt.main.push_button.is_closed():
-            # pass
+        configure_robot()
+        move_waste_to_sorting_area()
 
-        move_waste()
-
-        i = 1
+        item_index = 1
         while True:
-            loop(i)
-            i += 1
+            process_waste_item(item_index)
+            item_index += 1
 
 
-try:
-    main()
-except Exception:
-    print(traceback.format_exc())
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        print(traceback.format_exc())
