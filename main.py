@@ -144,7 +144,10 @@ def handle_plastic_waste(item_index):
 def activate_sorting_piston(valve):
     """Activates the piston to sort the waste."""
     with input_mutex:
-        txt.ext.back_motor.stop_sync(txt.ext.front_motor)
+        time.sleep(0.5)
+
+        txt.ext.back_motor.stop_sync()
+        txt.ext.front_motor.stop_sync()
 
         valve.on()
         time.sleep(0.33)
