@@ -18,6 +18,7 @@ input_mutex = Lock()
 executor = ThreadPoolExecutor()
 
 # Events for waste detection
+front_waste_event = Event()
 bio_waste_event = Event()
 np_waste_event = Event()
 recyclable_waste_event = Event()
@@ -57,6 +58,7 @@ def configure_robot():
     executor.submit(phototransistor_event_loop, np_waste_event, txt.main.np_pt)
     executor.submit(phototransistor_event_loop, recyclable_waste_event, txt.main.rec_pt)
     executor.submit(phototransistor_event_loop, plastic_waste_event, txt.main.rec_pt)
+    executor.submit(phototransistor_event_loop, front_waste_event, txt.ext.front_pt)
 
 
 def safe_print(*args, **kwargs):
@@ -89,6 +91,8 @@ def classify_and_sort_waste(item_index):
     }
 
     waste_label, sorting_function = waste_sorting_map[(item_index % 2 == 0, item_index % 3 == 0)]
+
+    wait_for_waste_event(front_waste_event) # Wait for waste to reach the front phototransistor
     waste_queue.put((waste_label, item_index))
     safe_print("{}: pushed {} to the queue".format(waste_label, item_index))
     executor.submit(sorting_function, item_index)
