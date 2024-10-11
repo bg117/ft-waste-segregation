@@ -30,8 +30,9 @@ def phototransistor_event_loop(waste_event, phototransistor):
     while True:
         if phototransistor.is_dark():
             while not phototransistor.is_bright():
-                pass
+                time.sleep(0.02)
             waste_event.set()
+        time.sleep(0.02)
 
 
 def initialize_controller():
