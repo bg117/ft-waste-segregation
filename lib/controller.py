@@ -17,9 +17,9 @@ class MainController:
 
         self.front_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 7)
 
-        self.bio_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 3)
+        self.bio_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 5)
         self.np_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 4)
-        self.rec_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 5)
+        self.rec_pt = txt_factory.input_factory.create_photo_transistor(self._txt, 3)
 
         self.bio_valve = txt_factory.output_factory.create_magnetic_valve(self._txt, 2)
         self.np_valve = txt_factory.output_factory.create_magnetic_valve(self._txt, 4)

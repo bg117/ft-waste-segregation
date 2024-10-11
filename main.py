@@ -57,7 +57,7 @@ def process_waste_item(item_index):
 
 def move_waste_to_sorting_area():
     """Moves waste to the sorting area."""
-    txt.ext.front_motor.set_speed(300, Motor.CCW)
+    txt.ext.front_motor.set_speed(375, Motor.CCW)
     txt.ext.back_motor.set_speed(200, Motor.CCW)
     txt.ext.front_motor.start()
     txt.ext.back_motor.start()
@@ -129,13 +129,13 @@ def handle_plastic_waste(item_index):
 def activate_sorting_piston(valve):
     """Activates the piston to sort the waste."""
     with input_mutex:
-        time.sleep(0.5)
+        time.sleep(1.1)
 
-        txt.ext.back_motor.stop_sync()
-        txt.ext.front_motor.stop_sync()
+        txt.ext.back_motor.stop()
+        txt.ext.front_motor.stop()
 
         valve.on()
-        time.sleep(0.33)
+        time.sleep(0.75)
         valve.off()
 
         move_waste_to_sorting_area()
@@ -210,7 +210,7 @@ def main():
         configure_robot()
         move_waste_to_sorting_area()
 
-        item_index = 1
+        item_index = 2
         while True:
             process_waste_item(item_index)
             item_index += 1
