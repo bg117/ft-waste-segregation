@@ -59,6 +59,7 @@ def process_waste_item():
     
     prediction = predictions[0]
     label = prediction['class']
+    print(prediction)
 
     if label == "cardboard" or label == "paper":
         handle_np_waste()
