@@ -1,9 +1,9 @@
 import time
 import traceback
 import cv2
-import numpy
 import base64
 import requests
+import threading
 
 from fischertechnik.controller.Motor import Motor
 from lib.controller import Controller
@@ -61,6 +61,8 @@ def process_waste_item():
     label = prediction['class']
     print(prediction)
 
+    threading.Thread(target=move_m1_slightly).start()
+
     if label == "cardboard" or label == "paper":
         handle_np_waste()
     elif label == "glass" or label == "metal":
@@ -71,11 +73,17 @@ def process_waste_item():
         handle_bio_waste()
 
 
+def move_m1_slightly():
+    """Moves the front motor slightly to capture the waste item."""
+    txt.ext.front_motor.set_speed(350, Motor.CCW)
+    txt.ext.front_motor.start()
+    time.sleep(1)
+    txt.ext.front_motor.stop()
+
+
 def move_waste_to_sorting_area():
     """Moves waste to the sorting area."""
-    txt.ext.front_motor.set_speed(300, Motor.CCW)
     txt.ext.back_motor.set_speed(200, Motor.CCW)
-    txt.ext.front_motor.start()
     txt.ext.back_motor.start()
 
 
