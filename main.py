@@ -66,9 +66,9 @@ def move_waste_to_sorting_area():
 def classify_and_sort_waste(item_index):
     """Classifies the waste type and directs it to the appropriate container."""
     waste_sorting_map = {
-        (True, True): (waste_labels.BIO, handle_bio_waste),
-        (True, False): (waste_labels.NP, handle_np_waste),
-        (False, True): (waste_labels.REC, handle_recyclable_waste),
+        (True, False): (waste_labels.BIO, handle_bio_waste),
+        (False, True): (waste_labels.NP, handle_np_waste),
+        (True, True): (waste_labels.REC, handle_recyclable_waste),
         (False, False): (waste_labels.PLASTIC, handle_plastic_waste),
     }
 
@@ -129,7 +129,7 @@ def handle_plastic_waste(item_index):
 def activate_sorting_piston(valve):
     """Activates the piston to sort the waste."""
     with input_mutex:
-        time.sleep(1.1)
+        time.sleep(0.82)
 
         txt.ext.back_motor.stop()
         txt.ext.front_motor.stop()
