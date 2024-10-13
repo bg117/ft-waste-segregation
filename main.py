@@ -53,7 +53,11 @@ def process_waste_item():
         "Content-Type": "application/x-www-form-urlencoded"
     }).json()
 
-    prediction = response['predictions'][0]
+    predictions = response['predictions']
+    if len(predictions) == 0:
+        return
+    
+    prediction = predictions[0]
     label = prediction['class']
 
     if label == "cardboard" or label == "paper":
