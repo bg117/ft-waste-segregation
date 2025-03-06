@@ -11,7 +11,7 @@ from lib.controller import Controller
 # Global Variables and Initialization
 txt = None  # type: Controller
 
-upload_url = "https://detect.roboflow.com/trash-detection-kfzaq/10?api_key=HXC352N4WELuCWfPDA8M&format=json&stroke=5"
+upload_url = "https://detect.roboflow.com/trash-detection-kfzaq/10?api_key=dgWKXzSaAp1PXKeR5O6o&format=json&stroke=5"
 
 
 def wait_for_phototransistor(phototransistor):
@@ -65,12 +65,9 @@ def process_waste_item():
 
     if label == "cardboard" or label == "paper":
         handle_np_waste()
-    elif label == "glass" or label == "metal":
-        handle_recyclable_waste()
     elif label == "plastic":
         handle_plastic_waste()
-    elif label == "organic waste":
-        handle_bio_waste()
+
 
 
 def move_m1_slightly():
